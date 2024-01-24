@@ -1,0 +1,30 @@
+{ 
+    "C_Cpp.default.includePath": ["${env:GDK}\\inc",
+    "${env:GDK}\\res",
+    "res",
+    "inc"
+],
+"files.associations": {
+    "*.blade.php": "html",
+    "*.json5": "jsonc",
+    "resources.h": "c",
+    "types.h": "c",
+    "map.h": "c",
+    "physics.h": "c",
+    "better-org": "cpp",
+    "genesis.h": "c",
+    "config.h": "c",
+    "entity.h": "c",
+    "crateria_1.h": "c",
+    "map_crateria_2.h": "c",
+    "map_crateria_1.h": "c",
+    "global.h": "c",
+    "camera.h": "c",
+    "player.h": "c",
+    "current_map.h": "c",
+    "level_test.h": "c",
+    "level.h": "c",
+    "sprite.h": "c",
+    "control.h": "c"
+}
+}
