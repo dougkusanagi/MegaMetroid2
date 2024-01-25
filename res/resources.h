@@ -9,6 +9,7 @@ extern const Image map_test_image_2;
 extern const Palette map_test_palette_2;
 extern const TileSet map_test_tileset_2;
 extern const MapDefinition map_test_map_2;
+extern const Palette text_palette;
 extern const SpriteDefinition samus_sprite;
 
 #endif // _RES_RESOURCES_H_

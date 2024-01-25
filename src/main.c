@@ -6,7 +6,7 @@
 #include "../inc/player.h"
 #include "../inc/control.h"
 
-u16 ind = TILE_USER_INDEX;
+u16 tile_index = TILE_USER_INDEX;
 bool debug_mode = FALSE;
 u16 palette[64];
 
@@ -38,40 +38,41 @@ void controlHandle2(void);
 void levelChange(u16 new_level);
 void fadeOut(void);
 void cameraSetPosition(s16 x, s16 y);
-void cameraUpdate();
+void boot(void);
+void clearLevel(void);
+int count_digits(int number);
+void write_int_text(int number, s16 x, s16 y);
+
+void debug_camera(void)
+{
+    if (debug_mode)
+    {
+        VDP_drawText("camera.X:", 0, 0);
+        write_int_text(camera.position.x, 10, 0);
+
+        VDP_drawText("camera.y:", 0, 1);
+        write_int_text(camera.position.y, 10, 1);
+    }
+    else
+    {
+        VDP_clearText(0, 0, 20);
+        VDP_clearText(0, 1, 20);
+    }
+}
 
 int main()
 {
+    boot();
 
-    SYS_disableInts();
-    VDP_setScreenWidth256();
-    SPR_init();
-    JOY_setEventHandler(&controlHandle);
-
-    fadeOut();
-
-    PAL_setPalette(PAL0, map_test_palette.data, DMA);
-    VDP_loadTileSet(&map_test_tileset, ind, DMA);
-    level.map_fg = MAP_create(&map_test_map, BG_A, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind));
-
-    ind += map_test_tileset.numTile;
-
-    cameraSetPosition(0, level.height - SCREEN_HEIGHT);
-    SYS_doVBlankProcess();
-
-    // prepare palettes (BGB image contains the 4 palettes data)
-    memcpy(&palette[0], map_test_palette.data, 64 * 2);
-    //    memcpy(&palette[16], bga_image.palette->data, 16 * 2);
-    //    memcpy(&palette[32], sonic_sprite.palette->data, 16 * 2);
-    //    memcpy(&palette[48], enemies_sprite.palette->data, 16 * 2);
-
-    // fade in
-    PAL_fadeIn(0, (4 * 16) - 1, palette, 30, TRUE);
+    levelChange(1);
 
     SYS_showFrameLoad(TRUE);
 
     KLog_S1("start camera.position.x", camera.position.x);
     KLog_S1("start camera.position.y", camera.position.y);
+
+    PAL_setPalette(PAL2, text_palette.data, DMA);
+    VDP_setTextPalette(PAL2);
 
     while (1)
     {
@@ -119,6 +120,8 @@ void cameraSetPosition(s16 x, s16 y)
         camera.position.y = y;
 
         MAP_scrollTo(level.map_fg, x, y);
+
+        debug_camera();
     }
 }
 
@@ -201,34 +204,40 @@ void controlHandle(u16 joy, u16 changed, u16 state)
 
     if (state & BUTTON_X)
     {
+        KLog("BUTTON_X");
+        KLog_S1("changed", changed);
+        KLog_S1("state", state);
+
         if (level.curr_level == 1)
         {
-            level.curr_level = 2;
+            levelChange(2);
         }
-
-        if (level.curr_level == 2)
+        else if (level.curr_level == 2)
         {
-            level.curr_level = 1;
+            levelChange(1);
         }
-
-        levelChange(level.curr_level);
     }
 }
 
 void levelChange(u16 new_level)
 {
-    if (new_level == 1)
+    KLog_S1("new_level", new_level);
+
+    level.curr_level = new_level;
+    tile_index = TILE_USER_INDEX;
+
+    fadeOut();
+    clearLevel();
+
+    switch (new_level)
     {
-        fadeOut();
-
-        ind = TILE_USER_INDEX;
-
+    case 1:
         PAL_setPalette(PAL0, map_test_palette.data, DMA);
-        VDP_loadTileSet(&map_test_tileset, ind, DMA);
-        level.map_fg = MAP_create(&map_test_map, BG_A, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind));
+        VDP_loadTileSet(&map_test_tileset, tile_index, DMA);
+        level.map_fg = MAP_create(&map_test_map, BG_B, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, tile_index));
 
-        ind += map_test_tileset.numTile;
-        level.ind_tileset = ind;
+        tile_index += map_test_tileset.numTile;
+        level.ind_tileset = tile_index;
 
         SYS_doVBlankProcess();
 
@@ -238,28 +247,74 @@ void levelChange(u16 new_level)
         //    memcpy(&palette[48], enemies_sprite.palette->data, 16 * 2);
 
         PAL_fadeIn(0, (4 * 16) - 1, palette, 30, TRUE);
-    }
+        break;
 
-    if (new_level == 2)
-    {
-        fadeOut();
-
-        ind = TILE_USER_INDEX;
-
+    case 2:
         PAL_setPalette(PAL0, map_test_palette_2.data, DMA);
-        VDP_loadTileSet(&map_test_tileset_2, ind, DMA);
-        level.map_fg = MAP_create(&map_test_map_2, BG_A, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind));
+        VDP_loadTileSet(&map_test_tileset_2, tile_index, DMA);
+        level.map_fg = MAP_create(&map_test_map_2, BG_B, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, tile_index));
 
-        ind += map_test_tileset_2.numTile;
-        level.ind_tileset = ind;
+        tile_index += map_test_tileset_2.numTile;
+        level.ind_tileset = tile_index;
 
         SYS_doVBlankProcess();
 
         memcpy(&palette[0], map_test_palette_2.data, 16 * 2);
 
         PAL_fadeIn(0, (4 * 16) - 1, palette, 30, TRUE);
+        break;
+
+    default:
+        break;
     }
 
-    MAP_scrollTo(level.map_fg, -1, -1);
-    cameraSetPosition(0, (level.height - SCREEN_HEIGHT));
+    cameraSetPosition(0, 0);
+    // cameraSetPosition(0, (level.height - SCREEN_HEIGHT));
+    cameraSetPosition(0, (448 - SCREEN_HEIGHT));
+}
+
+void boot(void)
+{
+    SYS_disableInts();
+    VDP_setScreenWidth256();
+    SPR_init();
+    JOY_setEventHandler(&controlHandle);
+}
+
+void clearLevel(void)
+{
+    VDP_clearPlane(BG_B, TRUE);
+    VDP_clearSprites();
+}
+
+void write_int_text(int number, s16 x, s16 y)
+{
+    int n = count_digits(number);
+    char *str = (char *)malloc((n + 1) * sizeof(char));
+
+    if (str == NULL)
+    {
+        return;
+    }
+
+    sprintf(str, "%d", number);
+    VDP_drawText(str, x, y);
+    free(str);
+}
+
+int count_digits(int number)
+{
+    if (number == 0)
+    {
+        return 1;
+    }
+
+    int count = 0;
+    while (number != 0)
+    {
+        number /= 10;
+        ++count;
+    }
+
+    return count;
 }
